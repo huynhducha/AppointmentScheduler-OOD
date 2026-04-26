@@ -14,27 +14,32 @@ public class SqlAppointmentDAO implements IAppointmentDAO {
 
     @Override
     public String insert(Appointment entity) {
-        String sql = "INSERT INTO Appointment (title, location, startTime, endTime) VALUES (?, ?, ?, ?)";
+        // 1. Kiểm tra: Nếu App chưa có ID, Backend tự sinh ra một mã UUID ngẫu nhiên
+        if (entity.getId() == null || entity.getId().trim().isEmpty()) {
+            entity.setId("APP-" + java.util.UUID.randomUUID().toString().substring(0, 6));
+        }
+
+        // 2. Bổ sung cột 'id' vào câu lệnh SQL và tăng số lượng dấu '?' lên 5
+        String sql = "INSERT INTO Appointment (id, title, location, startTime, endTime) VALUES (?, ?, ?, ?, ?)";
+
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, entity.getTitle());
-            pstmt.setString(2, entity.getLocation());
-            pstmt.setTimestamp(3, Timestamp.valueOf(entity.getStartTime()));
-            pstmt.setTimestamp(4, Timestamp.valueOf(entity.getEndTime()));
+            // 3. Truyền đủ 5 tham số xuống Database
+            pstmt.setString(1, entity.getId());
+            pstmt.setString(2, entity.getTitle());
+            pstmt.setString(3, entity.getLocation());
+            pstmt.setTimestamp(4, Timestamp.valueOf(entity.getStartTime()));
+            pstmt.setTimestamp(5, Timestamp.valueOf(entity.getEndTime()));
 
+            // 4. Thực thi câu lệnh
             pstmt.executeUpdate();
 
-            // Lấy ID tự động sinh từ Database (Auto-increment)
-            try (ResultSet rs = pstmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    String generatedId = rs.getString(1);
-                    entity.setId(generatedId);
-                    return generatedId;
-                }
-            }
+            // Trả về ID (là ID bạn truyền vào "1", "2" hoặc ID do hệ thống tự sinh)
+            return entity.getId();
+
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Lỗi Insert SQL: " + e.getMessage());
         }
         return null;
     }
