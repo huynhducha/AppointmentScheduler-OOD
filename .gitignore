@@ -28,3 +28,11 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+# Bỏ qua các file và thư mục cấu hình của IntelliJ IDEA
+.idea/
+*.iml
+
+# Bỏ qua thư mục build chứa file chạy (.class)
+out/
+build/
