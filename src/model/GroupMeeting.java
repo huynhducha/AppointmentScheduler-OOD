@@ -15,13 +15,6 @@ public class GroupMeeting extends Appointment {
 
     // --- CÁC HÀM XỬ LÝ LOGIC NGHIỆP VỤ ---
 
-    // Thêm người dùng vào cuộc họp
-    public void addParticipant(User user) {
-        if (user != null && !participants.contains(user)) {
-            this.participants.add(user);
-        }
-    }
-
     // Hàm tự kiểm tra xem cuộc họp này có khớp với tên và thời lượng tìm kiếm không
     public boolean isMatching(String searchTitle, long searchDuration) {
         boolean isTitleMatch = this.getTitle() != null && this.getTitle().equalsIgnoreCase(searchTitle);
@@ -30,12 +23,26 @@ public class GroupMeeting extends Appointment {
         return isTitleMatch && isDurationMatch;
     }
 
-    // --- GETTERS & SETTERS ---
-
-    public List<User> getParticipants() {
-        return participants;
+    // Thêm người dùng vào cuộc họp
+    public void addParticipant(User user) {
+        if (user != null && !participants.contains(user)) {
+            this.participants.add(user);
+        }
     }
 
+    // Cho phép xóa người tham gia khỏi nhóm
+    public void removeParticipant(User user) {
+        if (user != null) {
+            this.participants.remove(user);
+        }
+    }
+
+    // Lấy danh sách người tham gia để hiển thị lên UI (Defensive Copy)
+    public List<User> getParticipants() {
+        return new ArrayList<>(participants);
+    }
+
+    // Chỉ giữ lại Setter
     public void setParticipants(List<User> participants) {
         this.participants = participants;
     }

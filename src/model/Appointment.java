@@ -44,6 +44,13 @@ public class Appointment {
         return 0;
     }
 
+    // Thêm lời nhắc vào cuộc hẹn
+    public void addReminder(Reminder reminder) {
+        if (reminder != null) {
+            this.reminders.add(reminder);
+        }
+    }
+
     // --- GETTERS & SETTERS ---
 
     public String getId() { return id; }
