@@ -19,3 +19,4 @@ Hệ thống quản lý lịch hẹn cá nhân và họp nhóm, được xây d�
 2. Mở MySQL Workbench, chạy toàn bộ script trong file `database/schema.sql` để tạo CSDL.
 3. Cấu hình lại thông tin `username` và `password` MySQL trong file `src/dao/helper/DBConnection.java`.
 4. Mở project bằng IntelliJ IDEA, cấu hình thư viện JavaFX và chạy file `Main.java`.
+5. Chạy ở nhánh hoan-thien-du-an
