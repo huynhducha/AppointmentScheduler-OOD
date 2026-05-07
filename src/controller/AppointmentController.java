@@ -171,11 +171,26 @@ public class AppointmentController
 
                     if (confirmGroup.showAndWait().orElse(ButtonType.NO) == ButtonType.YES)
                     {
-                        // Gọi Join Group và không check conflict để tránh tự xóa Group
-                        appointmentBLL.processGroupJoin(matchingGroup.getId(), currentUserId, false, null);
+                        // --- ĐOẠN CODE ĐƯỢC CẬP NHẬT ĐỂ KHỚP SƠ ĐỒ (CÁCH B) ---
+                        // Kiểm tra xem việc tham gia nhóm có đè lịch cá nhân nào không
+                        Appointment conflictApp = appointmentBLL.checkConflict(newApp, currentUserId);
 
-                        showSuccessAndClose("Đã tham gia Group Meeting thành công!");
-                        return;
+                        if (conflictApp != null) {
+                            Alert confirmReplace = new Alert(Alert.AlertType.CONFIRMATION,
+                                    "Tham gia nhóm này sẽ đè mất lịch cá nhân: [" + conflictApp.getTitle() + "]. Bạn vẫn muốn tiếp tục chứ?",
+                                    ButtonType.YES, ButtonType.NO);
+
+                            if (confirmReplace.showAndWait().orElse(ButtonType.NO) == ButtonType.YES) {
+                                // Ghi đè: Gọi processGroupJoin với cờ isReplace = true
+                                appointmentBLL.processGroupJoin(matchingGroup.getId(), currentUserId, true, conflictApp.getId());
+                                showSuccessAndClose("Ghi đè lịch cũ và tham gia nhóm thành công!");
+                            }
+                        } else {
+                            // Không cấn lịch: Join nhóm bình thường (isReplace = false)
+                            appointmentBLL.processGroupJoin(matchingGroup.getId(), currentUserId, false, null);
+                            showSuccessAndClose("Đã tham gia Group Meeting thành công!");
+                        }
+                        return; // Kết thúc luồng lưu
                     }
                 }
 
