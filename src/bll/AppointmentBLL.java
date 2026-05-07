@@ -5,7 +5,10 @@ import dao.IReminderDAO;
 import model.Appointment;
 import model.GroupMeeting;
 import model.Reminder;
+import model.User;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 public class AppointmentBLL
@@ -33,23 +36,31 @@ public class AppointmentBLL
     }
 
     // --- BƯỚC 1: KIỂM TRA TRÙNG LỊCH CÁ NHÂN ---
-    public Appointment checkConflict(Appointment newApp)
+    // Thêm String userId vào tham số
+    public Appointment checkConflict(Appointment newApp, String userId)
     {
         if (!newApp.isValid())
         {
             throw new IllegalArgumentException("Dữ liệu cuộc hẹn không hợp lệ! (Vui lòng kiểm tra tên và giờ)");
         }
-        return appointmentDAO.findConflict(newApp.getStartTime(), newApp.getEndTime());
+        // Truyền userId xuống DAO
+        return appointmentDAO.findConflict(newApp.getStartTime(), newApp.getEndTime(), userId);
     }
 
     // --- BƯỚC 2: TÌM GROUP MEETING TRÙNG KHỚP ---
-    public GroupMeeting findMatchingGroupMeeting(String title, long duration)
-    {
-        if (title == null || title.trim().isEmpty() || duration <= 0)
-        {
-            return null; // Không hợp lệ thì bỏ qua luôn, không cần gọi DB
+    public GroupMeeting findMatchingGroupMeeting(String title, LocalDateTime startTime, LocalDateTime endTime) {
+        if (title == null || title.trim().isEmpty() || startTime == null || endTime == null) {
+            return null;
         }
-        return appointmentDAO.findMatchingGroupMeeting(title, duration);
+        // Gọi DAO tìm Group
+        GroupMeeting group = appointmentDAO.findMatchingGroupMeeting(title, startTime, endTime);
+
+        // Nếu tìm thấy, lập tức tải luôn danh sách thành viên lên (để lát nữa UI hiển thị)
+        if (group != null) {
+            List<User> participants = appointmentDAO.getParticipantsByMeetingId(group.getId());
+            group.setParticipants(participants);
+        }
+        return group;
     }
 
     // =======================================================
@@ -68,6 +79,11 @@ public class AppointmentBLL
         }
 
         newApp.setId(generatedId); // Cập nhật lại ID cho đối tượng trên RAM
+
+        // Nếu đây là họp Nhóm, lập tức đưa người tạo vào danh sách tham gia
+        if (newApp instanceof GroupMeeting) {
+            appointmentDAO.addParticipantToGroup(generatedId, userId);
+        }
 
         // Gắn cuộc hẹn này vào danh sách lịch cá nhân của User
         appointmentDAO.addMeetingToUserCalendar(userId, generatedId);
@@ -164,5 +180,19 @@ public class AppointmentBLL
         {
             reminderDAO.insertReminders(id, newReminders);
         }
+    }
+
+    // Lấy danh sách thành viên của một sự kiện (Dùng cho tính năng Double-Click)
+    public List<User> getParticipants(String meetingId) {
+        if (meetingId == null || meetingId.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return appointmentDAO.getParticipantsByMeetingId(meetingId);
+    }
+
+    // Lấy toàn bộ lịch (cá nhân + nhóm) của một User cụ thể
+    public List<Appointment> getUserAppointments(String userId) {
+        if (userId == null || userId.isEmpty()) return new ArrayList<>();
+        return appointmentDAO.getAppointmentsByUserId(userId);
     }
 }

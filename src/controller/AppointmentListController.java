@@ -18,6 +18,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Stage;
+import model.User;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -41,6 +42,8 @@ public class AppointmentListController
     private TableColumn<Appointment, String> colStart;
     @FXML
     private TableColumn<Appointment, String> colEnd;
+    @FXML
+    private TableColumn<Appointment, String> colType;
 
     // Sử dụng BLL thay vì DAO
     private AppointmentBLL appointmentBLL;
@@ -52,6 +55,13 @@ public class AppointmentListController
         appointmentBLL = new AppointmentBLL(new SqlAppointmentDAO(), new SqlReminderDAO());
         setupTableColumns();
         loadDataFromDatabase();
+
+        // --- CODE MỚI: Bắt sự kiện Double-click trên bảng ---
+        tblAppointments.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) { // Nếu nhấn đúp (2 lần)
+                showAppointmentDetails();
+            }
+        });
     }
 
     private void setupTableColumns()
@@ -77,6 +87,21 @@ public class AppointmentListController
             LocalDateTime endTime = cellData.getValue().getEndTime();
             return new SimpleStringProperty(endTime != null ? endTime.format(timeFormatter) : "");
         });
+
+        // --- XỬ LÝ ĐỔ DỮ LIỆU CHO CỘT LOẠI (CÁ NHÂN / NHÓM) ---
+        colType.setCellValueFactory(cellData -> {
+            String appointmentId = cellData.getValue().getId();
+
+            // Gọi BLL để lấy danh sách người tham gia của cái ID này
+            List<User> participants = appointmentBLL.getParticipants(appointmentId);
+
+            // Nếu có người tham gia -> Là họp nhóm -> In ra số lượng luôn!
+            if (participants != null && !participants.isEmpty()) {
+                return new SimpleStringProperty("Nhóm (" + participants.size() + ")");
+            }
+            // Nếu không có ai -> Là cá nhân
+            return new SimpleStringProperty("Cá nhân");
+        });
     }
 
     private void loadDataFromDatabase()
@@ -85,8 +110,9 @@ public class AppointmentListController
         try
         {
             // Lấy dữ liệu qua BLL
-            List<Appointment> listFromDB = appointmentBLL.getAllAppointments();
-            appointmentList.addAll(listFromDB);
+            String currentUserId = utils.SessionManager.getCurrentUser().getId();
+            List<Appointment> allAppointments = appointmentBLL.getUserAppointments(currentUserId);
+            appointmentList.addAll(allAppointments);
             tblAppointments.setItems(appointmentList);
         } catch (Exception e)
         {
@@ -188,4 +214,37 @@ public class AppointmentListController
         }
     }
 
+    // Hàm xử lý hiển thị chi tiết khi Double-click
+    private void showAppointmentDetails() {
+        Appointment selectedApp = tblAppointments.getSelectionModel().getSelectedItem();
+
+        // Nếu click ra vùng trống không có dữ liệu thì bỏ qua
+        if (selectedApp == null) return;
+
+        // Gọi BLL lấy danh sách người tham gia
+        List<User> participants = appointmentBLL.getParticipants(selectedApp.getId());
+
+        if (participants == null || participants.isEmpty()) {
+            // Lịch cá nhân
+            showAlert(Alert.AlertType.INFORMATION, "Chi tiết sự kiện",
+                    "Sự kiện: " + selectedApp.getTitle() + "\n" +
+                            "Địa điểm: " + selectedApp.getLocation() + "\n" +
+                            "Loại: Lịch hẹn cá nhân (Chỉ mình bạn)");
+        } else {
+            // Lịch họp nhóm -> Dùng StringBuilder để nối chuỗi danh sách cho mượt
+            StringBuilder sb = new StringBuilder();
+            sb.append("Sự kiện: ").append(selectedApp.getTitle()).append("\n");
+            sb.append("Địa điểm: ").append(selectedApp.getLocation()).append("\n");
+            sb.append("Loại: Họp Nhóm (").append(participants.size()).append(" thành viên)\n\n");
+
+            sb.append("--- Danh sách tham gia ---\n");
+            for (int i = 0; i < participants.size(); i++) {
+                User u = participants.get(i);
+                sb.append(i + 1).append(". ").append(u.getFullName())
+                        .append(" (").append(u.getEmail()).append(")\n");
+            }
+
+            showAlert(Alert.AlertType.INFORMATION, "Chi tiết Họp nhóm", sb.toString());
+        }
+    }
 }

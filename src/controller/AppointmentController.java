@@ -24,18 +24,26 @@ public class AppointmentController
     private TextField txtTitle;
     @FXML
     private TextField txtLocation;
+
+    // --- THÊM BIẾN COMBOBOX LOẠI LỊCH ---
+    @FXML
+    private ComboBox<String> cbAppointmentType;
+
     @FXML
     private ComboBox<Integer> cbStartHour;
     @FXML
     private ComboBox<Integer> cbEndHour;
 
-    // --- 3 BIẾN MỚI CHO REMINDER ---
+    // --- BIẾN CHO REMINDER ---
     @FXML
     private CheckBox chkReminder;
     @FXML
     private ComboBox<Integer> cbReminderMinutes;
     @FXML
     private ComboBox<String> cbReminderType;
+
+    @FXML
+    private DatePicker dpDate;
 
     private LocalDate selectedDate;
     private AppointmentBLL appointmentBLL;
@@ -55,14 +63,17 @@ public class AppointmentController
             cbEndHour.getItems().add(i);
         }
 
+        // --- CÀI ĐẶT COMBOBOX CHỌN LOẠI CÁ NHÂN / NHÓM ---
+        cbAppointmentType.getItems().addAll("Cá nhân", "Nhóm");
+        cbAppointmentType.setValue("Cá nhân"); // Mặc định là lịch cá nhân
+
         // --- CÀI ĐẶT DỮ LIỆU MẶC ĐỊNH CHO REMINDER ---
-        cbReminderMinutes.getItems().addAll(5, 10, 15, 30, 60, 120, 1440); // 1440 phút = 1 ngày
-        cbReminderMinutes.setValue(15); // Mặc định nhắc trước 15 phút
+        cbReminderMinutes.getItems().addAll(5, 10, 15, 30, 60, 120, 1440);
+        cbReminderMinutes.setValue(15);
 
         cbReminderType.getItems().addAll("POPUP", "EMAIL");
-        cbReminderType.setValue("POPUP"); // Mặc định là bật Popup màn hình
+        cbReminderType.setValue("POPUP");
 
-        // Mặc định tắt các ô chọn nếu Checkbox chưa được tích
         cbReminderMinutes.disableProperty().bind(chkReminder.selectedProperty().not());
         cbReminderType.disableProperty().bind(chkReminder.selectedProperty().not());
     }
@@ -70,6 +81,10 @@ public class AppointmentController
     public void setSelectedDate(LocalDate date)
     {
         this.selectedDate = date;
+        // Hiện ngày lên DatePicker
+        if (dpDate != null) {
+            dpDate.setValue(date);
+        }
     }
 
     @FXML
@@ -80,17 +95,27 @@ public class AppointmentController
         Integer startHour = cbStartHour.getValue();
         Integer endHour = cbEndHour.getValue();
 
-        if (title.isEmpty() || location.isEmpty() || startHour == null || endHour == null)
+        // Lấy ngày trực tiếp từ giao diện (người dùng có thể đã đổi ngày khác)
+        LocalDate finalDate = dpDate.getValue();
+
+        if (title.isEmpty() || location.isEmpty() || startHour == null || endHour == null || finalDate == null)
         {
             showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng điền đủ thông tin!");
             return;
         }
 
-        LocalDateTime startTime = selectedDate.atTime(startHour, 0);
-        LocalDateTime endTime = selectedDate.atTime(endHour, 0);
-        Appointment newApp = new Appointment(null, title, location, startTime, endTime);
+        // --- DÙNG finalDate THAY VÌ selectedDate NHƯ CŨ ---
+        LocalDateTime startTime = finalDate.atTime(startHour, 0);
+        LocalDateTime endTime = finalDate.atTime(endHour, 0);
 
-        // THU THẬP DỮ LIỆU REMINDER
+        // --- LOGIC MỚI: TẠO ĐÚNG LOẠI ĐỐI TƯỢNG (ĐA HÌNH) ---
+        Appointment newApp;
+        if ("Nhóm".equals(cbAppointmentType.getValue())) {
+            newApp = new GroupMeeting(null, title, location, startTime, endTime);
+        } else {
+            newApp = new Appointment(null, title, location, startTime, endTime);
+        }
+
         List<Reminder> currentReminders = new ArrayList<>();
         if (chkReminder.isSelected())
         {
@@ -104,14 +129,11 @@ public class AppointmentController
         {
             String currentUserId = utils.SessionManager.getCurrentUser().getId();
 
-            // ==========================================
-            // LUỒNG 1: ĐANG Ở CHẾ ĐỘ SỬA (EDIT MODE)
-            // ==========================================
             if (isEditMode)
             {
-                Appointment conflictApp = appointmentBLL.checkConflict(newApp);
+                // Sửa dòng này
+                Appointment conflictApp = appointmentBLL.checkConflict(newApp, currentUserId);
 
-                // Nếu có trùng lịch VÀ cái lịch bị trùng KHÔNG PHẢI là chính lịch đang sửa
                 if (conflictApp != null && !conflictApp.getId().equals(editingId))
                 {
                     Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
@@ -121,13 +143,11 @@ public class AppointmentController
                     if (confirm.showAndWait().orElse(ButtonType.NO) == ButtonType.YES)
                     {
                         appointmentBLL.processAppointmentReplacement(conflictApp.getId(), newApp, currentReminders);
-                        // Xóa lịch cũ đi (vì ta đã ghi đè sang một ID khác)
                         appointmentBLL.deleteAppointment(editingId);
                         showSuccessAndClose("Đã ghi đè lịch hẹn thành công!");
                     }
                 } else
                 {
-                    // Cập nhật bình thường
                     appointmentBLL.updateAppointment(editingId, newApp, currentReminders);
                     showSuccessAndClose("Cập nhật cuộc hẹn thành công!");
                 }
@@ -137,28 +157,31 @@ public class AppointmentController
             // ==========================================
             else
             {
-                long duration = newApp.getDurationInMinutes();
-                GroupMeeting matchingGroup = appointmentBLL.findMatchingGroupMeeting(title, duration);
+                GroupMeeting matchingGroup = appointmentBLL.findMatchingGroupMeeting(
+                        newApp.getTitle(),
+                        newApp.getStartTime(),
+                        newApp.getEndTime()
+                );
 
                 if (matchingGroup != null)
                 {
                     Alert confirmGroup = new Alert(Alert.AlertType.CONFIRMATION,
-                            "Lịch hẹn trùng với Group Meeting: " + matchingGroup.getTitle() + "\nBạn có muốn tham gia không?",
+                            "Đã có Group Meeting: " + matchingGroup.getTitle() + " vào giờ này.\nBạn có muốn tham gia nhóm thay vì tạo mới không?",
                             ButtonType.YES, ButtonType.NO);
 
                     if (confirmGroup.showAndWait().orElse(ButtonType.NO) == ButtonType.YES)
                     {
-                        Appointment conflictForGroup = appointmentBLL.checkConflict(matchingGroup);
-                        boolean isReplace = conflictForGroup != null;
-                        String oldId = isReplace ? conflictForGroup.getId() : null;
+                        // Gọi Join Group và không check conflict để tránh tự xóa Group
+                        appointmentBLL.processGroupJoin(matchingGroup.getId(), currentUserId, false, null);
 
-                        appointmentBLL.processGroupJoin(matchingGroup.getId(), currentUserId, isReplace, oldId);
                         showSuccessAndClose("Đã tham gia Group Meeting thành công!");
                         return;
                     }
                 }
 
-                Appointment conflictApp = appointmentBLL.checkConflict(newApp);
+                // --- ĐÃ SỬA LẠI ĐÚNG CHUẨN Ở ĐÂY ---
+                // Kiểm tra xem lịch MỚI CỦA MÌNH (newApp) có cấn với LỊCH CỦA MÌNH (currentUserId) không
+                Appointment conflictApp = appointmentBLL.checkConflict(newApp, currentUserId);
 
                 if (conflictApp != null)
                 {
@@ -173,6 +196,7 @@ public class AppointmentController
                     }
                 } else
                 {
+                    // Lưu mới bình thường
                     appointmentBLL.processNewAppointment(newApp, currentReminders, currentUserId);
                     showSuccessAndClose("Đã thêm lịch hẹn thành công!");
                 }
@@ -224,5 +248,10 @@ public class AppointmentController
         cbStartHour.setValue(app.getStartTime().getHour());
         cbEndHour.setValue(app.getEndTime().getHour());
         this.selectedDate = app.getStartTime().toLocalDate();
+
+        dpDate.setValue(this.selectedDate);
+
+        // Khóa không cho đổi loại (Cá nhân/Nhóm) khi đang Edit để tránh lỗi dữ liệu
+        cbAppointmentType.setDisable(true);
     }
 }

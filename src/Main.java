@@ -13,8 +13,14 @@ public class Main extends Application
         Parent root = FXMLLoader.load(getClass().getResource("/view/LoginView.fxml"));
 
         primaryStage.setTitle("Đăng nhập Hệ thống Quản lý Lịch hẹn");
-        primaryStage.setScene(new Scene(root, 400, 300));
-        primaryStage.setResizable(false); // Khóa kích thước màn hình login cho đẹp
+
+        // Cố định luôn kích thước 400x400 để form không bị cắt xén
+        Scene scene = new Scene(root, 400, 400);
+
+        // ĐÂY CHÍNH LÀ DÒNG BẠN BỊ THIẾU NÈ:
+        primaryStage.setScene(scene);
+
+        primaryStage.setResizable(false); // Khóa kích thước màn hình login
         primaryStage.show();
     }
 

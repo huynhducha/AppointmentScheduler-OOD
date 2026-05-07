@@ -16,6 +16,10 @@ public class RegisterController
     private TextField txtFullName;
     @FXML
     private TextField txtEmail;
+    // THÊM BIẾN NÀY
+    @FXML
+    private javafx.scene.control.PasswordField txtPassword;
+
 
     private final UserBLL userBLL = new UserBLL(new SqlUserDAO());
 
@@ -24,26 +28,25 @@ public class RegisterController
     {
         String fullName = txtFullName.getText().trim();
         String email = txtEmail.getText().trim();
+        String password = txtPassword.getText().trim(); // LẤY PASSWORD
 
-        // Validate cơ bản
-        if (fullName.isEmpty() || email.isEmpty())
+        if (fullName.isEmpty() || email.isEmpty() || password.isEmpty())
         {
-            showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập đầy đủ Họ tên và Email!");
+            showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
         try
         {
-            // Tạo đối tượng User (ID truyền null để DAO tự sinh UUID)
-            User newUser = new User(null, fullName, email);
+            // Truyền thêm password vào Constructor (4 tham số)
+            User newUser = new User(null, fullName, email, password);
 
-            // Gọi BLL xử lý nghiệp vụ đăng ký (Check trùng email, insert...)
             boolean isSuccess = userBLL.register(newUser);
 
             if (isSuccess)
             {
                 showAlert(Alert.AlertType.INFORMATION, "Thành công", "Đăng ký thành công! Vui lòng đăng nhập.");
-                openLoginView(); // Tự động quay về màn hình đăng nhập
+                openLoginView();
             }
         } catch (Exception e)
         {

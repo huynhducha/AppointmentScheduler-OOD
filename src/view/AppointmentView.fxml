@@ -4,90 +4,80 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
-<?import javafx.scene.layout.ColumnConstraints?>
-<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="420.0" prefWidth="450.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="controller.AppointmentController">
+<AnchorPane prefHeight="550.0" prefWidth="500.0" style="-fx-background-color: white;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controller.AppointmentController">
     <children>
-        <VBox alignment="TOP_CENTER" layoutX="25.0" layoutY="20.0" prefWidth="400.0" spacing="20.0">
+        <VBox layoutX="30.0" layoutY="20.0" prefWidth="440.0" spacing="20.0">
             <children>
-                <Label style="-fx-font-size: 20px; -fx-font-weight: bold;" text="Chi tiết cuộc hẹn"/>
+                <TextField fx:id="txtTitle" prefHeight="50.0" promptText="Thêm tiêu đề..." style="-fx-background-color: transparent; -fx-border-color: transparent transparent #e0e0e0 transparent; -fx-border-width: 0 0 2px 0; -fx-font-size: 24px; -fx-prompt-text-fill: #7f8c8d;">
+                    <font>
+                        <Font name="System Bold" size="24.0" />
+                    </font>
+                </TextField>
 
-                <GridPane hgap="15.0" vgap="15.0">
-                    <columnConstraints>
-                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="150.0" minWidth="10.0" prefWidth="120.0"/>
-                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="250.0" minWidth="10.0" prefWidth="250.0"/>
-                    </columnConstraints>
-                    <rowConstraints>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
-                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES"/>
-                    </rowConstraints>
+                <HBox spacing="20.0">
                     <children>
-                        <Label text="Tên sự kiện:" textAlignment="RIGHT" GridPane.halignment="RIGHT">
-                            <font>
-                                <Font name="System Bold" size="13.0"/>
-                            </font>
-                        </Label>
-                        <TextField fx:id="txtTitle" promptText="VD: Learning" GridPane.columnIndex="1"/>
-
-                        <Label text="Vị trí:" textAlignment="RIGHT" GridPane.halignment="RIGHT" GridPane.rowIndex="1">
-                            <font>
-                                <Font name="System Bold" size="13.0"/>
-                            </font>
-                        </Label>
-                        <TextField fx:id="txtLocation" promptText="VD: Ở nhà" GridPane.columnIndex="1"
-                                   GridPane.rowIndex="1"/>
-
-                        <Label text="Giờ bắt đầu:" textAlignment="RIGHT" GridPane.halignment="RIGHT"
-                               GridPane.rowIndex="2">
-                            <font>
-                                <Font name="System Bold" size="13.0"/>
-                            </font>
-                        </Label>
-                        <ComboBox fx:id="cbStartHour" prefWidth="100.0" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
-
-                        <Label text="Giờ kết thúc:" textAlignment="RIGHT" GridPane.halignment="RIGHT"
-                               GridPane.rowIndex="3">
-                            <font>
-                                <Font name="System Bold" size="13.0"/>
-                            </font>
-                        </Label>
-                        <ComboBox fx:id="cbEndHour" prefWidth="100.0" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                        <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                            <Label text="Loại cuộc hẹn:" textFill="#5f6368">
+                                <font><Font name="System Bold" size="13.0" /></font>
+                            </Label>
+                            <ComboBox fx:id="cbAppointmentType" prefWidth="200.0" style="-fx-background-color: #f1f3f4; -fx-background-radius: 4px;" />
+                        </VBox>
+                        <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                            <Label text="Địa điểm:" textFill="#5f6368">
+                                <font><Font name="System Bold" size="13.0" /></font>
+                            </Label>
+                            <TextField fx:id="txtLocation" prefWidth="200.0" promptText="VD: Phòng họp A, Online..." style="-fx-background-color: #f1f3f4; -fx-border-color: transparent; -fx-background-radius: 4px;" />
+                        </VBox>
                     </children>
-                </GridPane>
+                </HBox>
 
-                <VBox spacing="10.0" style="-fx-border-color: #bdc3c7; -fx-border-radius: 5px; -fx-padding: 10px;">
-                    <Label text="Cài đặt nhắc hẹn:" style="-fx-font-weight: bold;"/>
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <CheckBox fx:id="chkReminder" mnemonicParsing="false" text="Bật thông báo"/>
-                        <ComboBox fx:id="cbReminderMinutes" prefWidth="70.0" promptText="Phút"/>
-                        <Label text="phút trước qua"/>
-                        <ComboBox fx:id="cbReminderType" prefWidth="90.0" promptText="Loại"/>
+                <VBox spacing="10.0" style="-fx-background-color: #f8f9fa; -fx-padding: 15px; -fx-background-radius: 8px; -fx-border-color: #e8eaed; -fx-border-radius: 8px;">
+                    <Label text="Thời gian diễn ra:" textFill="#1a73e8">
+                        <font><Font name="System Bold" size="14.0" /></font>
+                    </Label>
+                    <HBox alignment="CENTER_LEFT" spacing="15.0">
+                        <DatePicker fx:id="dpDate" prefWidth="140.0" promptText="Chọn ngày" style="-fx-background-color: white;" />
+                        <Label text="Từ" textFill="#5f6368" />
+                        <ComboBox fx:id="cbStartHour" prefWidth="80.0" style="-fx-background-color: white;" />
+                        <Label text="Đến" textFill="#5f6368" />
+                        <ComboBox fx:id="cbEndHour" prefWidth="80.0" style="-fx-background-color: white;" />
                     </HBox>
                 </VBox>
 
-                <HBox alignment="CENTER" spacing="30.0">
-                    <children>
-                        <Button mnemonicParsing="false" onAction="#onSave" prefHeight="35.0" prefWidth="100.0"
-                                style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"
-                                text="Xác nhận"/>
-                        <Button mnemonicParsing="false" onAction="#onCancel" prefHeight="35.0" prefWidth="100.0"
-                                style="-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold;"
-                                text="Hủy bỏ"/>
-                    </children>
+                <VBox spacing="10.0" style="-fx-background-color: #fff3e0; -fx-padding: 15px; -fx-background-radius: 8px; -fx-border-color: #ffe0b2; -fx-border-radius: 8px;">
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <CheckBox fx:id="chkReminder" mnemonicParsing="false" text="Bật thông báo nhắc hẹn" textFill="#e67e22">
+                            <font><Font name="System Bold" size="13.0" /></font>
+                        </CheckBox>
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Label text="Nhắc trước:" textFill="#5f6368" />
+                        <ComboBox fx:id="cbReminderMinutes" prefWidth="80.0" style="-fx-background-color: white;" />
+                        <Label text="phút qua" textFill="#5f6368" />
+                        <ComboBox fx:id="cbReminderType" prefWidth="100.0" style="-fx-background-color: white;" />
+                    </HBox>
+                </VBox>
+
+                <HBox alignment="CENTER_RIGHT" spacing="15.0">
                     <VBox.margin>
-                        <Insets top="10.0"/>
+                        <Insets top="20.0" />
                     </VBox.margin>
+                    <children>
+                        <Button mnemonicParsing="false" onAction="#onCancel" prefHeight="35.0" prefWidth="100.0" style="-fx-background-color: transparent; -fx-border-color: #dadce0; -fx-border-radius: 4px; -fx-text-fill: #5f6368; -fx-cursor: hand;" text="Hủy bỏ">
+                            <font><Font name="System Bold" size="13.0" /></font>
+                        </Button>
+                        <Button mnemonicParsing="false" onAction="#onSave" prefHeight="35.0" prefWidth="120.0" style="-fx-background-color: #1a73e8; -fx-text-fill: white; -fx-background-radius: 4px; -fx-cursor: hand;" text="Lưu sự kiện">
+                            <font><Font name="System Bold" size="13.0" /></font>
+                        </Button>
+                    </children>
                 </HBox>
             </children>
         </VBox>

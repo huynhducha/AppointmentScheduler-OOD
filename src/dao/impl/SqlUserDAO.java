@@ -13,6 +13,35 @@ public class SqlUserDAO implements IUserDAO
 
     // --- CÁC HÀM TỪ IUserDAO ---
 
+    // Sửa lại hàm insert
+    @Override
+    public String insert(User entity)
+    {
+        if (entity.getId() == null || entity.getId().trim().isEmpty())
+        {
+            entity.setId("USR-" + java.util.UUID.randomUUID().toString().substring(0, 6));
+        }
+
+        // Bổ sung cột password vào SQL
+        String sql = "INSERT INTO User (id, fullName, email, password) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql))
+        {
+            pstmt.setString(1, entity.getId());
+            pstmt.setString(2, entity.getFullName());
+            pstmt.setString(3, entity.getEmail());
+            pstmt.setString(4, entity.getPassword()); // Truyền password xuống DB
+
+            pstmt.executeUpdate();
+            return entity.getId();
+        } catch (SQLException e)
+        {
+            System.err.println("Lỗi insert User SQL: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // Sửa lại hàm findByEmail
     @Override
     public User findByEmail(String email)
     {
@@ -20,16 +49,17 @@ public class SqlUserDAO implements IUserDAO
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql))
         {
-
             pstmt.setString(1, email);
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next())
             {
+                // Sử dụng Constructor 4 tham số để lấy cả password lên
                 return new User(
                         rs.getString("id"),
                         rs.getString("fullName"),
-                        rs.getString("email")
+                        rs.getString("email"),
+                        rs.getString("password")
                 );
             }
         } catch (SQLException e)
@@ -59,33 +89,6 @@ public class SqlUserDAO implements IUserDAO
     }
 
     // --- CÁC HÀM OVERRIDE TỪ IBaseDAO<User, String> ---
-
-    @Override
-    public String insert(User entity)
-    {
-        // Tự động sinh ID nếu chưa có
-        if (entity.getId() == null || entity.getId().trim().isEmpty())
-        {
-            entity.setId("USR-" + java.util.UUID.randomUUID().toString().substring(0, 6));
-        }
-
-        String sql = "INSERT INTO User (id, fullName, email) VALUES (?, ?, ?)";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql))
-        {
-
-            pstmt.setString(1, entity.getId());
-            pstmt.setString(2, entity.getFullName());
-            pstmt.setString(3, entity.getEmail());
-
-            pstmt.executeUpdate();
-            return entity.getId();
-        } catch (SQLException e)
-        {
-            System.err.println("Lỗi insert User SQL: " + e.getMessage());
-        }
-        return null;
-    }
 
     @Override
     public void update(String id, User entity)

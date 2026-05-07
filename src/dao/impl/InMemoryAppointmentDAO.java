@@ -3,6 +3,7 @@ package dao.impl;
 import dao.IAppointmentDAO;
 import model.Appointment;
 import model.GroupMeeting;
+import model.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,13 +13,13 @@ public class InMemoryAppointmentDAO implements IAppointmentDAO {
     // Đây chính là "Database" mô phỏng trong RAM của chúng ta
     private final List<Appointment> database = new ArrayList<>();
 
-    // Bảng phụ mô phỏng liên kết User - Appointment
+    // Bảng phụ mô phỏng liên kết User - Appointment (Lưu dạng: userId_appointmentId)
     private final List<String> userMeetingLinks = new ArrayList<>();
 
     @Override
     public String insert(Appointment entity) {
         database.add(entity);
-        return entity.getId(); // Trả về ID đúng như thiết kế Sequence Diagram
+        return entity.getId();
     }
 
     @Override
@@ -34,6 +35,8 @@ public class InMemoryAppointmentDAO implements IAppointmentDAO {
     @Override
     public void delete(String id) {
         database.removeIf(app -> app.getId().equals(id));
+        // Dọn dẹp cả liên kết trong bảng phụ mô phỏng
+        userMeetingLinks.removeIf(link -> link.endsWith("_" + id));
     }
 
     @Override
@@ -49,25 +52,30 @@ public class InMemoryAppointmentDAO implements IAppointmentDAO {
         return new ArrayList<>(database);
     }
 
-    // --- CÁC HÀM ĐẶC THÙ ---
+    // --- CÁC HÀM ĐẶC THÙ ĐÃ ĐƯỢC CẬP NHẬT ---
 
+    // SỬA LỖI: Thêm String userId cho khớp Interface và kiểm tra đúng lịch của User
     @Override
-    public Appointment findConflict(LocalDateTime start, LocalDateTime end) {
+    public Appointment findConflict(LocalDateTime start, LocalDateTime end, String userId) {
         for (Appointment app : database) {
-            // Thuật toán kiểm tra giao nhau (Overlap) của 2 khoảng thời gian
-            if (app.getStartTime().isBefore(end) && app.getEndTime().isAfter(start)) {
-                return app; // Tìm thấy 1 lịch bị trùng
+            // Chỉ kiểm tra cấn lịch với những cuộc hẹn mà User này có tham gia
+            boolean isUserInvolved = userMeetingLinks.contains(userId + "_" + app.getId());
+
+            if (isUserInvolved && app.getStartTime().isBefore(end) && app.getEndTime().isAfter(start)) {
+                return app;
             }
         }
         return null;
     }
 
     @Override
-    public GroupMeeting findMatchingGroupMeeting(String title, long duration) {
+    public GroupMeeting findMatchingGroupMeeting(String title, LocalDateTime startTime, LocalDateTime endTime) {
         for (Appointment app : database) {
             if (app instanceof GroupMeeting) {
                 GroupMeeting meeting = (GroupMeeting) app;
-                if (meeting.isMatching(title, duration)) {
+                if (meeting.getTitle() != null && meeting.getTitle().equalsIgnoreCase(title) &&
+                        meeting.getStartTime().equals(startTime) &&
+                        meeting.getEndTime().equals(endTime)) {
                     return meeting;
                 }
             }
@@ -76,21 +84,42 @@ public class InMemoryAppointmentDAO implements IAppointmentDAO {
     }
 
     @Override
+    public List<User> getParticipantsByMeetingId(String meetingId) {
+        Appointment app = findById(meetingId);
+        if (app instanceof GroupMeeting) {
+            return ((GroupMeeting) app).getParticipants();
+        }
+        return new ArrayList<>();
+    }
+
+    // Nâng cấp luôn hàm này để nó lọc đúng lịch của User (thay vì trả về tất cả)
+    @Override
     public List<Appointment> getAppointmentsByUserId(String userId) {
-        // Trong thực tế sẽ dùng lệnh SELECT JOIN, ở đây ta trả về toàn bộ cho đơn giản
-        return new ArrayList<>(database);
+        List<Appointment> userApps = new ArrayList<>();
+        for (Appointment app : database) {
+            if (userMeetingLinks.contains(userId + "_" + app.getId())) {
+                userApps.add(app);
+            }
+        }
+        return userApps;
     }
 
     @Override
     public void addParticipantToGroup(String meetingId, String userId) {
         Appointment app = findById(meetingId);
-        // Trong hệ thống thực, ta sẽ gọi entity.addParticipant() hoặc thêm vào bảng phụ
-        System.out.println("DAO: Đã thêm User " + userId + " vào GroupMeeting " + meetingId);
+        if (app instanceof GroupMeeting) {
+            // Mô phỏng thêm 1 user giả vào RAM để lát nữa UI hiển thị được
+            ((GroupMeeting) app).addParticipant(new User(userId, "User " + userId, "dummy@email.com"));
+        }
+        System.out.println("DAO (RAM): Đã thêm User " + userId + " vào GroupMeeting " + meetingId);
     }
 
     @Override
     public void addMeetingToUserCalendar(String userId, String meetingId) {
-        userMeetingLinks.add(userId + "_" + meetingId);
-        System.out.println("DAO: Đã liên kết Lịch " + meetingId + " cho User " + userId);
+        String link = userId + "_" + meetingId;
+        if (!userMeetingLinks.contains(link)) {
+            userMeetingLinks.add(link);
+        }
+        System.out.println("DAO (RAM): Đã liên kết Lịch " + meetingId + " cho User " + userId);
     }
 }

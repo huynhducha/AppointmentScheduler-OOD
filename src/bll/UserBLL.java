@@ -12,30 +12,35 @@ public class UserBLL
         this.userDAO = userDAO;
     }
 
-    // Nghiệp vụ 1: Định danh người dùng qua Email
-    public User loginByEmail(String email)
+    // --- SỬA HÀM LOGIN THÊM THAM SỐ PASSWORD ---
+    public User login(String email, String password)
     {
-        if (email == null || email.trim().isEmpty())
+        if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty())
         {
-            throw new IllegalArgumentException("Vui lòng nhập địa chỉ email!");
+            throw new IllegalArgumentException("Vui lòng nhập đầy đủ Email và Mật khẩu!");
         }
 
         User user = userDAO.findByEmail(email);
 
-        if (user == null)
+        // Kiểm tra xem User có tồn tại không và Mật khẩu có khớp không
+        if (user == null || user.getPassword() == null || !user.getPassword().equals(password))
         {
-            throw new RuntimeException("Không tìm thấy tài khoản nào liên kết với email này!");
+            throw new RuntimeException("Email hoặc mật khẩu không chính xác!");
         }
 
         return user;
     }
 
-    // Nghiệp vụ 2: Đăng ký người dùng mới
+    // --- THÊM ĐIỀU KIỆN RÀNG BUỘC KHI ĐĂNG KÝ ---
     public boolean register(User newUser)
     {
-        if (newUser == null || newUser.getEmail() == null || newUser.getFullName() == null)
+        if (newUser == null || newUser.getEmail() == null || newUser.getFullName() == null || newUser.getPassword() == null)
         {
-            throw new IllegalArgumentException("Thông tin người dùng không được để trống!");
+            throw new IllegalArgumentException("Thông tin đăng ký không được để trống!");
+        }
+
+        if (newUser.getPassword().length() < 6) {
+            throw new IllegalArgumentException("Mật khẩu phải có ít nhất 6 ký tự!");
         }
 
         if (userDAO.isEmailExists(newUser.getEmail()))

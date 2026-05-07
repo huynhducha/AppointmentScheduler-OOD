@@ -19,20 +19,22 @@ public class LoginController
     // Khởi tạo BLL
     private final UserBLL userBLL = new UserBLL(new SqlUserDAO());
 
+    // THÊM BIẾN NÀY DƯỚI txtEmail
+    @FXML
+    private javafx.scene.control.PasswordField txtPassword;
+
     @FXML
     void onLoginClick(ActionEvent event)
     {
         String email = txtEmail.getText().trim();
+        String password = txtPassword.getText().trim(); // LẤY PASSWORD
 
         try
         {
-            // 1. Gọi BLL xác thực
-            User loggedInUser = userBLL.loginByEmail(email);
+            // Truyền cả email và password vào BLL
+            User loggedInUser = userBLL.login(email, password);
 
-            // 2. Lưu vào Session
             SessionManager.setCurrentUser(loggedInUser);
-
-            // 3. Thông báo và chuyển màn hình
             showAlert(Alert.AlertType.INFORMATION, "Thành công", "Chào mừng " + loggedInUser.getFullName() + "!");
             openDashboard();
 

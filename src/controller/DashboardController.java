@@ -78,8 +78,9 @@ public class DashboardController
         appointmentList.clear();
         try
         {
-            List<Appointment> data = appointmentBLL.getAllAppointments();
-            appointmentList.addAll(data);
+            String currentUserId = utils.SessionManager.getCurrentUser().getId();
+            List<Appointment> allAppointments = appointmentBLL.getUserAppointments(currentUserId);
+            appointmentList.addAll(allAppointments);
             tblAppointments.setItems(appointmentList);
         } catch (Exception e)
         {

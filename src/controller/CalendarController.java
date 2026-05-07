@@ -70,7 +70,8 @@ public class CalendarController
         YearMonth currentViewMonth = YearMonth.of(cbYear.getValue(), cbMonth.getValue());
 
         // 1. Lấy toàn bộ dữ liệu lịch hẹn từ DB thông qua BLL
-        List<Appointment> allAppointments = appointmentBLL.getAllAppointments();
+        String currentUserId = utils.SessionManager.getCurrentUser().getId();
+        List<Appointment> allAppointments = appointmentBLL.getUserAppointments(currentUserId);
 
         // 2. Vẽ tiêu đề (Th 2 -> CN)
         String[] daysOfWeek = {"Th 2", "Th 3", "Th 4", "Th 5", "Th 6", "Th 7", "CN"};
@@ -105,20 +106,27 @@ public class CalendarController
             btnDay.setMaxWidth(Double.MAX_VALUE);
             btnDay.setMaxHeight(Double.MAX_VALUE);
 
+            // Ngày đang được vẽ
+            LocalDate currentDate = currentViewMonth.atDay(day);
+
+            // --- XỬ LÝ MÀU SẮC (CSS) ---
             String style = "-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px;";
 
-            // Tô ngày hiện tại tinh tế hơn (Chữ đỏ, viền đỏ, không đổ nền)
-            if (day == today.getDayOfMonth() && currentViewMonth.equals(YearMonth.from(today)))
+            // 1. Nếu là Ngày hôm nay (Chữ đỏ)
+            if (currentDate.equals(today))
             {
-                style += " -fx-text-fill: red; -fx-font-weight: bold; -fx-border-width: 1px; -fx-border-radius: 5px;";
+                style += " -fx-text-fill: red; -fx-font-weight: bold;";
+            }
+            // 2. Nếu là Ngày đang được người dùng CLICK CHỌN (Nền xanh lam, chữ trắng)
+            if (selectedDateFromGrid != null && currentDate.equals(selectedDateFromGrid))
+            {
+                style += " -fx-background-color: #3498db; -fx-text-fill: white; -fx-background-radius: 20px;";
             }
 
-            // TÍNH NĂNG MỚI: Kiểm tra xem ngày này có sự kiện không
-            LocalDate currentDate = LocalDate.of(cbYear.getValue(), cbMonth.getValue(), day);
+            // 3. Nếu có Sự kiện (Đóng viền xanh lá)
             boolean hasEvent = allAppointments.stream()
                     .anyMatch(app -> app.getStartTime().toLocalDate().equals(currentDate));
 
-            // Nếu có sự kiện, đóng khung màu xanh lá cây
             if (hasEvent)
             {
                 style += " -fx-border-color: #2ecc71; -fx-border-width: 2px; -fx-border-radius: 20px;";
@@ -126,10 +134,13 @@ public class CalendarController
 
             btnDay.setStyle(style);
 
-            int selectedDay = day;
+            // --- BẮT SỰ KIỆN CLICK CHỌN NGÀY ---
             btnDay.setOnAction(e -> {
-                selectedDateFromGrid = LocalDate.of(cbYear.getValue(), cbMonth.getValue(), selectedDay);
+                selectedDateFromGrid = currentDate; // Ghi nhớ ngày vừa chọn
                 System.out.println("Đã chọn ngày: " + selectedDateFromGrid);
+
+                // QUAN TRỌNG: Vẽ lại toàn bộ lịch ngay lập tức để cập nhật màu sắc!
+                renderCalendarGrid();
             });
 
             calendarGrid.add(btnDay, col, row);

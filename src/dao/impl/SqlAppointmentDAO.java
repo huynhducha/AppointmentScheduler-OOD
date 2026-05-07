@@ -4,6 +4,7 @@ import dao.IAppointmentDAO;
 import dao.helper.DBConnection;
 import model.Appointment;
 import model.GroupMeeting;
+import model.User;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -45,18 +46,29 @@ public class SqlAppointmentDAO implements IAppointmentDAO {
     }
 
     @Override
-    public Appointment findConflict(LocalDateTime start, LocalDateTime end) {
-        // Thuật toán SQL: Kiểm tra trùng lặp khoảng thời gian
-        String sql = "SELECT * FROM Appointment WHERE startTime < ? AND endTime > ?";
+    public Appointment findConflict(LocalDateTime start, LocalDateTime end, String userId) {
+        // Kiểm tra xem khoảng thời gian này có cấn với lịch cá nhân hoặc lịch nhóm NÀO CỦA USER NÀY không
+        String sql = "SELECT a.* FROM Appointment a JOIN User_Appointment ua ON a.id = ua.appointmentId " +
+                "WHERE ua.userId = ? AND a.startTime < ? AND a.endTime > ? " +
+                "UNION " +
+                "SELECT a.* FROM Appointment a JOIN Group_Participant gp ON a.id = gp.meetingId " +
+                "WHERE gp.userId = ? AND a.startTime < ? AND a.endTime > ?";
+
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setTimestamp(1, Timestamp.valueOf(end));
-            pstmt.setTimestamp(2, Timestamp.valueOf(start));
+            // Tham số cho vế Lịch cá nhân
+            pstmt.setString(1, userId);
+            pstmt.setTimestamp(2, Timestamp.valueOf(end));
+            pstmt.setTimestamp(3, Timestamp.valueOf(start));
+
+            // Tham số cho vế Lịch nhóm
+            pstmt.setString(4, userId);
+            pstmt.setTimestamp(5, Timestamp.valueOf(end));
+            pstmt.setTimestamp(6, Timestamp.valueOf(start));
 
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                // Map dữ liệu từ ResultSet sang Object Appointment (đã viết ở model)
                 return new Appointment(
                         rs.getString("id"),
                         rs.getString("title"),
@@ -153,19 +165,19 @@ public class SqlAppointmentDAO implements IAppointmentDAO {
     }
 
     @Override
-    public GroupMeeting findMatchingGroupMeeting(String title, long duration) {
-        // Dùng hàm DATEDIFF của SQL Server để tính số phút giữa startTime và endTime
-        String sql = "SELECT * FROM Appointment WHERE title = ? AND DATEDIFF(MINUTE, startTime, endTime) = ?";
+    public GroupMeeting findMatchingGroupMeeting(String title, LocalDateTime startTime, LocalDateTime endTime) {
+        // So sánh chính xác tên và mốc thời gian bắt đầu, kết thúc
+        String sql = "SELECT * FROM Appointment WHERE title = ? AND startTime = ? AND endTime = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, title);
-            pstmt.setLong(2, duration);
+            pstmt.setTimestamp(2, Timestamp.valueOf(startTime));
+            pstmt.setTimestamp(3, Timestamp.valueOf(endTime));
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                // Ép kiểu dữ liệu đọc được sang GroupMeeting
                 return new GroupMeeting(
                         rs.getString("id"),
                         rs.getString("title"),
@@ -181,17 +193,47 @@ public class SqlAppointmentDAO implements IAppointmentDAO {
     }
 
     @Override
+    public List<User> getParticipantsByMeetingId(String meetingId) {
+        List<User> participants = new ArrayList<>();
+        // JOIN 2 bảng: Group_Participant (bảng trung gian) và User (bảng chứa thông tin)
+        String sql = "SELECT u.id, u.fullName, u.email FROM User u " +
+                "JOIN Group_Participant gp ON u.id = gp.userId " +
+                "WHERE gp.meetingId = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, meetingId);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                // Khởi tạo User từ dữ liệu lấy được
+                User u = new User(
+                        rs.getString("id"),
+                        rs.getString("fullName"),
+                        rs.getString("email")
+                );
+                participants.add(u);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi getParticipantsByMeetingId: " + e.getMessage());
+        }
+        return participants;
+    }
+
+    @Override
     public List<Appointment> getAppointmentsByUserId(String userId) {
         List<Appointment> list = new ArrayList<>();
-        // Dùng lệnh JOIN để lấy lịch của một User cụ thể
-        String sql = "SELECT a.* FROM Appointment a " +
-                "JOIN User_Appointment ua ON a.id = ua.appointmentId " +
-                "WHERE ua.userId = ?";
+        // Gộp (UNION) lịch cá nhân VÀ lịch nhóm mà User này tham gia
+        String sql = "SELECT a.* FROM Appointment a JOIN User_Appointment ua ON a.id = ua.appointmentId WHERE ua.userId = ? " +
+                "UNION " +
+                "SELECT a.* FROM Appointment a JOIN Group_Participant gp ON a.id = gp.meetingId WHERE gp.userId = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, userId);
+            pstmt.setString(2, userId); // Truyền userId lần 2 cho vế UNION
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
